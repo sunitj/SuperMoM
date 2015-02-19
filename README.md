@@ -34,6 +34,11 @@ This version of `SuperMoM` has been tested with the following dependencies on sy
 	* ggplot2
 	* googleVis
 	
+## Contact
+
+Sunit Jain
+
+sunitj [at] umich [dot] edu
 
 =====
 
