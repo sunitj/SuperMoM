@@ -18,7 +18,7 @@ CREATE CONSTRAINT ON (sci:SciName) ASSERT sci.name IS UNIQUE;
 //CREATE INDEX ON :ImgGenes(geneImgName);
 
 USING PERIODIC COMMIT 5
-LOAD CSV WITH HEADERS FROM 'file:/Users/sunitj/Neo4j/IMG/Staging/multiGene_scaffold_testRun2.tsv' AS line FIELDTERMINATOR '\t'
+LOAD CSV WITH HEADERS FROM 'file:/Users/sunitj/Neo4j/IMG/Staging/testRun2.tsv' AS line FIELDTERMINATOR '\t'
 MERGE (contig:Contigs {name:LOWER(line.ImgContigID)}) 
 SET contig.length = TOINT(line.ContigLength),
 	contig.gc = TOFLOAT(line.ContigGC), 
@@ -55,7 +55,3 @@ MERGE (gene)-[:LOCATED_AT]->(coord)
 MERGE (coord)-[:LOCATED_ON]->(contig)
 MERGE (coord)-[:IN_ORGANISM]->(sci)
 ;
-
-
-// For One Sample
-// 

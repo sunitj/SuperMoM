@@ -1,0 +1,105 @@
+node {
+  diameter: 40px;
+  color: #DFE1E3;
+  border-color: #D4D6D7;
+  border-width: 2px;
+  text-color-internal: #000000;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+relationship {
+  color: #D4D6D7;
+  shaft-width: 1px;
+  font-size: 8px;
+  padding: 3px;
+  text-color-external: #000000;
+  text-color-internal: #FFFFFF;
+}
+
+node.Contigs {
+  color: #AD62CE;
+  border-color: #9453B1;
+  text-color-internal: #000000;
+  diameter: 30px;
+  border-width: 2px;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+node.Genes {
+  color: #F25A29;
+  border-color: #DC4717;
+  caption: '{name}';
+}
+
+node.Coords {
+  color: #30B6AF;
+  border-color: #46A39E;
+  caption: '{locus}';
+}
+
+node.GeneSource {
+  color: #FF6C7C;
+  border-color: #EB5D6C;
+  caption: '{name}';
+}
+
+node.TaxaDomain {
+  color: #FCC940;
+  border-color: #F3BA25;
+  text-color-internal: #000000;
+  caption: '{name}';
+}
+
+node.TaxaPhylum {
+  color: #4356C0;
+  border-color: #3445A2;
+  caption: '{name}';
+}
+
+node.TaxaClass {
+  color: #AD62CE;
+  border-color: #9453B1;
+  diameter: 30px;
+  border-width: 2px;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+node.TaxaOrder {
+  color: #AD62CE;
+  border-color: #9453B1;
+  diameter: 30px;
+  border-width: 2px;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+node.TaxaFamily {
+  color: #AD62CE;
+  border-color: #9453B1;
+  diameter: 30px;
+  border-width: 2px;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+node.TaxaGenus {
+  color: #AD62CE;
+  border-color: #9453B1;
+  diameter: 30px;
+  border-width: 2px;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+node.TaxaSciName {
+  color: #AD62CE;
+  border-color: #9453B1;
+  diameter: 30px;
+  border-width: 2px;
+  caption: '{name}';
+  font-size: 10px;
+}
+
