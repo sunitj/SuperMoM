@@ -11,7 +11,25 @@ This set of scripts load your IMG/M ER annotated data the database.
 *Place Holder Schema*
 ![image](images/GraphDB_draft_003.png)
 
+## Screen Shot of the current database
+![Sample](images/Sample.png)
+
+## How to use it?
+* Reformat the data in a tabular format by executing the `perl` script `createDB.pl`, like so:
+
+```
+perl createDB.pl -gff file.gff -phylodist file.phylodist -gene_prod file.geneproducts -map file.map -lgc file.length_gc -out file.output
+```
+
+* Edit the `loadData.cql` to point to the output of the previoius step.
+* On your terminal, navigate into the neo4j `bin` folder and type:
+
+```
+neo4j-shell -file loadData.cql
+```
+
+**WARNING:** The steps mentioned above have only been tested on a small sample set. Use these scripts at your own risk.
+
 ## ToDo:
-* Add relationships in the database.
 * Make this a one step-one script process.
 * Add image of the updated schema

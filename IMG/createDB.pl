@@ -188,19 +188,6 @@ foreach my $contig(keys %annotation){
 }
 close $OUT;
 
-## Load CSV Query
-## LOAD CSV WITH HEADERS FROM 'file:/Users/sunitj/Neo4j/IMG/Staging/random300_testRun2.tsv' AS line FIELDTERMINATOR '\t'
-## MERGE (IMG_contig_ID:IMG_Contigs {contig_imgName: line.IMG_contig_ID,contigLength: line.Contig_Length, contig_gc: line.Contig_GC, original_contig_name: line.Original_contig_ID})
-## MERGE (IMG_Gene_ID: IMG_Genes {gene_imgName: line.IMG_Gene_ID, geneLength: line.Gene_Length, geneProduct: line.Gene_Product, geneTaxaPercID: line.Taxa_Perc_ID})
-## MERGE (Domain: Domain {domain:line.Domain})
-## MERGE (Phylum: Phylum {phylum:line.Phylum})
-## MERGE (Class: Class {class:line.Class})
-## MERGE (Order: Order {order:line.Order})
-## MERGE (Family: Family {family:line.Family})
-## MERGE (Genus: Genus {genus: line.Genus})
-## MERGE (Sci_Name: SciName {sciName: line.Sci_Name});
-## ;
-
 ## Loading the Data sequentially
 #my $contig_names=REST::Neo4p::Index->new('node','contig_names');
 #my $gene_names=REST::Neo4p::Index->new('node','gene_names');

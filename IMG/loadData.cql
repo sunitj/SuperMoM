@@ -1,47 +1,61 @@
 // Load IMG Data
 
-CREATE CONSTRAINT ON (p:ProjectName) ASSERT p.projectName IS UNIQUE;
-CREATE CONSTRAINT ON (ic:ImgContigs) ASSERT ic.ImgContigName IS UNIQUE;
-CREATE CONSTRAINT ON (coord:GeneCoords) ASSERT coord.geneCoordName IS UNIQUE;
-CREATE CONSTRAINT ON (ig:ImgGenes) ASSERT ig.geneImgName IS UNIQUE;
-CREATE CONSTRAINT ON (td:TaxaDomain) ASSERT td.taxaDomain IS UNIQUE;
-CREATE CONSTRAINT ON (tp:TaxaPhylum) ASSERT tp.taxaPhylum IS UNIQUE;
-CREATE CONSTRAINT ON (tc:TaxaClass) ASSERT tc.taxaClass IS UNIQUE;
-CREATE CONSTRAINT ON (torder:TaxaOrder) ASSERT torder.taxaOrder IS UNIQUE;
-CREATE CONSTRAINT ON (tf:TaxaFamily) ASSERT tf.taxaFamily IS UNIQUE;
-CREATE CONSTRAINT ON (tg:TaxaGenus) ASSERT tg.taxaGenus IS UNIQUE;
+CREATE CONSTRAINT ON (project:Project) ASSERT project.projectID IS UNIQUE;
+CREATE CONSTRAINT ON (contig:ImgContigs) ASSERT contig.name IS UNIQUE;
+CREATE CONSTRAINT ON (gene:ImgGenes) ASSERT gene.name IS UNIQUE;
+CREATE CONSTRAINT ON (coord:GeneCoords) ASSERT coord.locus IS UNIQUE;
+CREATE CONSTRAINT ON (gsource:GeneSource) ASSERT gsource.name IS UNIQUE;
+CREATE CONSTRAINT ON (domain:TaxaDomain) ASSERT domain.name IS UNIQUE;
+CREATE CONSTRAINT ON (phylum:TaxaPhylum) ASSERT phylum.name IS UNIQUE;
+CREATE CONSTRAINT ON (class:TaxaClass) ASSERT class.name IS UNIQUE;
+CREATE CONSTRAINT ON (torder:TaxaOrder) ASSERT torder.name IS UNIQUE;
+CREATE CONSTRAINT ON (family:TaxaFamily) ASSERT family.name IS UNIQUE;
+CREATE CONSTRAINT ON (genus:TaxaGenus) ASSERT genus.name IS UNIQUE;
+CREATE CONSTRAINT ON (sci:SciName) ASSERT sci.name IS UNIQUE;
 
 //CREATE INDEX ON :ImgContigs(ImgContigName);
 //CREATE INDEX ON :ImgContigs(originalContigName);
 //CREATE INDEX ON :ImgGenes(geneImgName);
-//CREATE INDEX ON :TaxaDomain(taxaDomain);
-//CREATE INDEX ON :TaxaPhylum(taxaPhylum);
-//CREATE INDEX ON :TaxaClass(taxaClass);
-//CREATE INDEX ON :TaxaOrder(taxaOrder);
-//CREATE INDEX ON :TaxaFamily(taxaFamily);
-//CREATE INDEX ON :TaxaGenus(taxaGenus);
 
-LOAD CSV WITH HEADERS FROM 'file:/Users/sunitj/Neo4j/IMG/Staging/random300_testRun2.tsv' AS line FIELDTERMINATOR '\t'
-MERGE (ic:ImgContigs {imgContigName:LOWER(line.ImgContigID), contigLength:TOINT(line.ContigLength), contigGC: TOFLOAT(line.ContigGC), originalContigName: LOWER(line.OriginalContigID)})
-MERGE (ig: ImgGenes {geneImgName: LOWER(line.ImgGeneID), geneLength: TOINT(line.GeneLength), geneProduct: LOWER(line.GeneProduct), geneTaxaPercID:TOFLOAT(line.TaxaPercID)})
-MERGE (coord: GeneCoords {geneCoordName:LOWER(line.ImgGeneID),geneStart:TOINT(line.GeneStart), geneStop:TOINT(line.GeneStop), geneStrand:TOSTRING(line.GeneStrand)})
-MERGE (td: TaxaDomain {taxaDomain:LOWER(line.TaxaDomain)})
-MERGE (tp: TaxaPhylum {taxaPhylum:LOWER(line.TaxaPhylum)})
-MERGE (tc: TaxaClass {taxaClass:LOWER(line.TaxaClass)})
-MERGE (tor: TaxaOrder {taxaOrder:LOWER(line.TaxaOrder)})
-MERGE (tf: TaxaFamily {taxaFamily:LOWER(line.TaxaFamily)})
-MERGE (tg: TaxaGenus {taxaGenus: LOWER(line.TaxaGenus)})
-MERGE (sn: SciName {sciName: LOWER(line.Sci_Name)})
+USING PERIODIC COMMIT 5
+LOAD CSV WITH HEADERS FROM 'file:/Users/sunitj/Neo4j/IMG/Staging/multiGene_scaffold_testRun2.tsv' AS line FIELDTERMINATOR '\t'
+MERGE (contig:Contigs {name:LOWER(line.ImgContigID)}) 
+SET contig.length = TOINT(line.ContigLength),
+	contig.gc = TOFLOAT(line.ContigGC), 
+	contig.origName = LOWER(line.OriginalContigID)
+
+MERGE (gene: Genes {name: LOWER(line.ImgGeneID)})
+SET gene.length = TOINT(line.GeneLength), 
+		gene.product = LOWER(line.GeneProduct)
+
+MERGE (coord: Coords {locus:LOWER(line.ImgGeneID)})
+SET coord.geneStart = TOINT(line.GeneStart), 
+		coord.geneStop = TOINT(line.GeneStop),
+		coord.geneStrand = TOSTRING(line.GeneStrand),
+		coord.geneTaxaPercID = TOFLOAT(line.TaxaPercID)
+							
+MERGE (gsource: GeneSource {name:LOWER(line.GeneSource)})
+MERGE (domain: TaxaDomain {name:LOWER(line.TaxaDomain)})
+MERGE (phylum: TaxaPhylum {name:LOWER(line.TaxaPhylum)})
+MERGE (class: TaxaClass {name:LOWER(line.TaxaClass)})
+MERGE (torder: TaxaOrder {name:LOWER(line.TaxaOrder)})
+MERGE (family: TaxaFamily {name:LOWER(line.TaxaFamily)})
+MERGE (genus: TaxaGenus {name: LOWER(line.TaxaGenus)})
+MERGE (sci: TaxaSciName {name: LOWER(line.Sci_Name)})
 
 // Relationships
-MERGE (ig)-[loc:LOCATED_AT]->(coord)-[ann:ANNOTATED_AS]->(ic)
-MERGE (td)<-[dp:IN_DOMAIN]-(tp)<-[pc:IN_PHYLUM]-(tc)<-[co:IN_CLASS]-(tor)<-[of:IN_ORDER]-(tf)<-[fg:IN_FAMILY]-(tg)<-[fs:IN_GENUS]-(sn)
-//MERGE (coord)-[ctd:IN_DOMAIN]->(td)
-//MERGE (coord)-[ctp:IN_PHYLUM]->(tp)
-//MERGE (coord)-[ctc:IN_CLASS]->(tc)
-//MERGE (coord)-[ctor:IN_ORDER]->(tor)
-//MERGE (coord)-[ctf:IN_FAMILY]->(tf)
-//MERGE (coord)-[ctg:IN_GENUS]->(tg)
-//MERGE (coord)-[csn:IN_SPECIES]->(sn)
-MERGE (ic)-[csp:BELONGS_TO]->(sn)
+MERGE (sci)-[:IN_GENUS]->(genus)
+MERGE (genus)-[:IN_FAMILY]->(family)
+MERGE (family)-[:IN_ORDER]->(torder)
+MERGE (torder)-[:IN_CLASS]->(class)
+MERGE (class)-[:IN_PHYLUM]->(phylum)
+MERGE (phylum)-[:IN_DOMAIN]->(domain)
+MERGE (coord)-[:HAS_SOURCE]->(gsource)
+MERGE (gene)-[:LOCATED_AT]->(coord)
+MERGE (coord)-[:LOCATED_ON]->(contig)
+MERGE (coord)-[:IN_ORGANISM]->(sci)
 ;
+
+
+// For One Sample
+// 
