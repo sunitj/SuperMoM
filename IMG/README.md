@@ -9,7 +9,7 @@ This set of scripts load your IMG/M ER annotated data the database.
 
 ## Schema
 *Place Holder Schema*
-![image](images/GraphDB_draft_003.png)
+![image](images/graphDB_schema.png)
 
 ## Screen Shot of the current database
 ![Sample](images/Sample.png)
