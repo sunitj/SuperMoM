@@ -8,7 +8,6 @@ This set of scripts load your IMG/M ER annotated data the database.
 * Creates nodes and adds properties from the tab-delimited file into the database.
 
 ## Schema
-*Place Holder Schema*
 ![image](images/graphDB_schema.png)
 
 ## Screen Shot of the current database
@@ -18,14 +17,7 @@ This set of scripts load your IMG/M ER annotated data the database.
 * Reformat the data in a tabular format by executing the `perl` script `createDB.pl`, like so:
 
 ```
-perl createDB.pl -gff file.gff -phylodist file.phylodist -gene_prod file.geneproducts -map file.map -lgc file.length_gc -out file.output
-```
-
-* Edit the `loadData.cql` to point to the output of the previoius step.
-* On your terminal, navigate into the neo4j `bin` folder and type:
-
-```
-neo4j-shell -file loadData.cql
+perl createDB.pl -gff file.gff -phylodist file.phylodist -gene_prod file.geneproducts -map file.map -lgc file.length_gc
 ```
 
 **WARNING:** The steps mentioned above have only been tested on a small sample set. Use these scripts at your own risk.
