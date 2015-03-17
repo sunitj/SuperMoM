@@ -25,6 +25,7 @@ This version of `SuperMoM` has been tested with the following dependencies on sy
 * Packages:
 	* Bio::Perl
 	* REST::Neo4p
+	* Term::ProgressBar
 
 ### R
 * Version 3.1.2
