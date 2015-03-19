@@ -8,10 +8,15 @@ createDB.pl -- Do this.
 
 perl createDB.pl
 
-=head2 Options
-    -gff    <CHAR>  GFF file
-    -phylodist  <CHAR>  Phylodist file  
-    -port   <INT>   port where neo4j server is running.
+=head2 Neo4j specific options
+
+    -port   <INT>   port where neo4j server is running; (default: 7474)
+
+=head2 Script specific options
+
+    -DIR	<CHAR>	Path to uncompressed IMG tarball; (default: "./")
+    -project	<CHAR>	File name with multiple key/value pairs OR just an ID number.
+    
     -version -v	<BOOLEAN>	version of the current script
     -help	-h	<BOOLEAN>	This message.
 
@@ -45,27 +50,20 @@ use Bio::SeqIO;
 use Term::ProgressBar;
 
 my $help;
-my $version=fileparse($0).".pl\tv0.9.9";
+my $version=fileparse($0).".pl\tv0.9.96";
 
 my $port=7474;
-my ($gff, $phylodist, $geneProd, $mapTxt, $crisprTxt, $out, $lgc);
-my $project="3300003874";
+my $project;
 my %HKG; # 36 Housekeeping Genes; Cicarelli et al Science 2006
+my $DIR="./";
 GetOptions(
     'port:i'=>\$port,
-    'gff=s'=>\$gff,
-    'gene_prod=s'=>\$geneProd,
-    'phylodist=s'=>\$phylodist,
-    'map=s'=>\$mapTxt,
-    'crispr=s'=>\$crisprTxt,
-    'out=s'=>\$out,
-    'lgc=s'=>\$lgc,
-    'proj=s'=>\$project,
+    'DIR:s'=>\$DIR,
+    'project=s'=>\$project,
     'v|version'=>sub{print $version."\n"; exit;},
     'h|help'=>sub{system("perldoc $0 \| cat"); exit;},
 );
 print "\# $version\n";
-my $logFile=$project.".neo4j.loading.log";
 
 # Connect to the Neo4j Server
 my $server='http://127.0.0.1:'.$port;
@@ -74,11 +72,32 @@ eval {
 };
 ref $@ ? $@->rethrow : die $@ if $@;
 
-# Say no to buffering...!
-$|++;
+# Get all File names in the given directory
+unless ($DIR=~ m/\/$/){$DIR=$DIR."/";}
+my @FILES=<$DIR*>;
+
+print "[Update] Getting required files from Directory:\t$DIR\n";
+my ($cog, $ec, $faa, $fna, $geneProd, $gff, $ko, $mapTxt, $pfam, $phylodist, $config);
+foreach my $f(@FILES){
+    $cog=$f if ($f=~ /.*.cog.txt/);
+    $ec=$f if ($f=~ /.*.ec.txt/);
+    $faa=$f if ($f=~ /.*.faa/);
+    $fna=$f if ($f=~ /.*.fna/);
+    $geneProd=$f if ($f=~ /.*.gene_product.txt/);
+    $gff=$f if ($f=~ /.*.gff/);
+    $ko=$f if ($f=~ /.*.ko.txt/);
+    $mapTxt=$f if ($f=~ /.*.map.txt/);
+    $pfam=$f if ($f=~ /.*.pfam.txt/);
+    $phylodist=$f if ($f=~ /.*.phylodist.txt/);
+}
+
+die "[FATAL] Need project id."if (! $project);
+
 
 # Read all the files
+
 ## Read GFF3 files
+print "[Update] Reading GFF file:\t$gff\n";
 my (%gff_attributes, %annotation);
 my $GFF3=FileHandle->new();
 open($GFF3, "<",$gff)||die $!;
@@ -90,6 +109,7 @@ while(my $line=<$GFF3>){
 close $GFF3;
 
 ## Read the Phylodist File
+print "[Update] Reading PhyloDist file:\t$phylodist\n";
 my %PhyloDist;
 my $PD=FileHandle->new();
 open($PD, "<",$phylodist) || die $!;
@@ -116,6 +136,7 @@ while(my $line=<$PD>){
 close $PD;
 
 ## Read the Gene_Product file
+print "[Update] Reading Gene Product file:\t$geneProd\n";
 &loadHouseKeepingGenes;
 my %GeneProd;
 my $hypoProt=0;
@@ -135,6 +156,7 @@ while(my $line=<$GP>){
 close $GP;
 
 ## Read the map.txt
+print "[Update] Reading Names Map file:\t$mapTxt\n";
 my %nameMap;
 my $MAP=FileHandle->new();
 open($MAP, "<",$mapTxt) || die $!;
@@ -146,45 +168,36 @@ while(my $line=<$MAP>){
 }
 close $MAP;
 
-### Read the crispr.txt
-#my %crispr;
-#my $CRISP=FileHandle->new();
-#open($CRISP, "<",$crisprTxt) || die $!;
-#while(my $line=<$CRISP>){
-#    chomp $line;
-#    my ($imgScaffoldID, $crisprNum, $pos, $repeat, $spacer, $tool)=split(/\t/, $line);
-#    $crispr{$imgScaffoldID}=join("\t", $repeat, $spacer);
-#}
-#close $CRISP;
-
-## Read the length+GC output
+## Calculate the length and GC from scaffold file
+print "[Update] Reading scaffold fasta file:\t$fna\n";
+print "[Update] Calculating Length and GC content.\n";
 my %lenGC;
-my $LGC=FileHandle->new();
-open($LGC, "<",$lgc) || die $!;
-while(my $line=<$LGC>){
+my $FASTA=FileHandle->new();
+open($FASTA, "<",$fna) || die $!;
+$/=">";
+while(my $line=<$FASTA>){
     chomp $line;
+    next unless $line;
     $line=lc($line);
-    my ($imgScaffoldID, $gc, $length)=split(/\t/, $line);
-    $lenGC{$imgScaffoldID}{"LEN"}=$length;
-    $lenGC{$imgScaffoldID}{"GC"}=$gc;
+    my ($header, @sequence)=split(/\n/, $line);
+    my $seq=join("",@sequence);
+    my $seqLen=length($seq);
+    
+    die $header." Length is 0\n" if ($seqLen==0);
+    
+    my ($g, $c);
+    while ( $seq =~ /g/ig ) { $g++ }
+    while ( $seq =~ /c/ig ) { $c++ }
+    
+    my $GC = (($g+$c)/$seqLen)*100;
+    $lenGC{$header}{"LEN"}=$seqLen;
+    $lenGC{$header}{"GC"}=sprintf( "%.4f", $GC);
 
 }
-close $LGC;
+close $FASTA;
+$/="\n";
 
-# Write data to a TSV for batch load to database using `LOAD CSV` from the neo4j shell
-# Until I can figure out how to do it from here.
-#my $OUT=FileHandle->new();
-#open($OUT, ">",$out) || die $!;
-#
-## Header
-#print $OUT "Project\tImgContigID\tOriginalContigID\tContigLength\tContigGC\t";
-#print $OUT "ImgGeneID\tGeneStart\tGeneStop\tGeneLength\tGeneStrand\t";
-#print $OUT "GeneProduct\tGeneSource\t";
-#print $OUT "TaxaDomain\tTaxaPhylum\tTaxaClass\tTaxaOrder\tTaxaFamily\tTaxaGenus\tSci_Name\tTaxaPercID\t";
-## print $OUT "Repeat_Seq\tSpacer_Seq";
-#print $OUT "\n";
-
-
+print "[Update] All files read!\n";
 ### NODES
 my %project_nodes;
 my %contig_nodes;
@@ -197,7 +210,9 @@ my %contig2project;
 my %locus2contig;
 my %locus2source;
 my %locus2taxa;
-#my %org2taxa;
+
+### SCHEMA ###
+
 
 ### INDEXES ###
 my $idx = REST::Neo4p->get_index_by_name('node', 'my_nodes') ||
@@ -205,13 +220,40 @@ my $idx = REST::Neo4p->get_index_by_name('node', 'my_nodes') ||
 my $rel_idx = REST::Neo4p->get_index_by_name('relationship', 'my_relationships') ||
 	  REST::Neo4p::Index->new('relationship', 'my_relationships');
 
+my %projectMetadata;
+if (-s $project) {
+    my $META=FileHandle->new();
+    open($META, "<",$project) || die $!;
+    while (my $line=<$META>) {
+	chomp $line;
+	next unless $line;
+	next if ($line=~/^#/);
+	$line=lc($line);
+	my($tag, $value)=split(/\t/, $line);
+	$projectMetadata{$tag}=$value;
+	$project=$value if ($tag eq "id");
+    }
+    close $META;
+    die "[FATAL] No project id found!\n" if(! $projectMetadata{"id"});
+}
+
 ($project_nodes{$project})= $idx->find_entries(id=>$project);
 unless($project_nodes{$project}){
     $project_nodes{$project}=REST::Neo4p::Node->new({id=>$project});
     $project_nodes{$project}->set_labels("Project");
     $idx->add_entry($project_nodes{$project}, id=>$project);
-    $project_nodes{$project}->set_property({name=>"Isolated Sinkhole",
-					    type=>"Metagenome"});
+    if (scalar(keys(%projectMetadata)>0)) {
+	foreach (keys %projectMetadata){
+	    next if ($_ eq "id");
+	    my $value=lc($projectMetadata{$_});
+	    my $key=lc($_);
+	    $project_nodes{$project}->set_property({$key=>$value});
+	}
+    }
+    else{
+	$project_nodes{$project}->set_property({name=>"Another Nameless Project",
+						type=>"Metagenome"});
+    }
 }
 ###
 
@@ -226,6 +268,7 @@ my $progress = Term::ProgressBar->new ({count => $numContigs ,name => 'Populatin
 my $currentContig=0;
 
 # Create a Log file
+my $logFile=$project.".neo4j.loading.log";
 my $LOG=FileHandle->new();
 open($LOG, ">",$logFile) || die $!;
 print $LOG "\# $version\n";
@@ -325,9 +368,9 @@ foreach my $contig(keys %annotation){
 	
 	if ($PhyloDist{$gene}{"DOMAIN"}){
 	    my $species=$PhyloDist{$gene}{"SPECIES"};
-	    ($taxa_nodes{$gene})= $idx->find_entries(name=>$species);
+	    ($taxa_nodes{$gene})= $idx->find_entries(id=>$species);
 	    unless($taxa_nodes{$gene}){
-		$taxa_nodes{$gene}=REST::Neo4p::Node->new({id=>$PhyloDist{$gene}{"SPECIES"}});
+		$taxa_nodes{$gene}=REST::Neo4p::Node->new({id=>$species});
 		$taxa_nodes{$gene}->set_labels("Taxa");
 		foreach (keys %{$PhyloDist{$gene}}){
 		    next if $_ eq "SPECIES";
@@ -343,7 +386,6 @@ foreach my $contig(keys %annotation){
 	    # RELATION (Locus)-[:IN_ORGANISM]->(Taxa)
 	    $locus2taxa{$species}{$gene}=$rel_idx->find_entries(id=>$species."_".$gene);
 	    unless($locus2taxa{$species}{$gene}){
-		# RELATION: (Locus)-[:IN_ORGANISM]->(Taxa)
 		$locus2taxa{$species}{$gene}=$locus_nodes{$gene}->relate_to($taxa_nodes{$gene}, "IN_ORGANISM");
 		$locus2taxa{$species}{$gene}->set_property({identity=>$PhyloDist{$gene}{"PERCENT"}});
 		$rel_idx->add_entry($locus2taxa{$species}{$gene}, id=>$species."_".$gene);
@@ -359,41 +401,14 @@ foreach my $contig(keys %annotation){
 	    $PhyloDist{$gene}{"PERCENT"}=0;
 	}
 	
-	# Header: "Project\tIMG_contig_ID\tOriginal_contig_ID\tContig_Length\tContig_GC\t
-	# IMG_Gene_ID\tGene_Start\tGene_Stop\tGene_Length\tGene_Strand\t
-	# Gene_Product\tGene_Source\t
-	# Domain\tPhylum\tClass\tOrder\tFamily\tGenus\tSpecies\tTaxa_Perc_ID\t
-	## Repeat_Seq\tSpacer_Seq\n";
-#	my $printLine = $project."\t".$contig."\t".$nameMap{$contig}."\t".
-#	    $lenGC{$contig}{"LEN"}."\t".
-#	    $lenGC{$contig}{"GC"}."\t";
-#	
-#	$printLine.=$gene."\t".
-#	    $annotation{$contig}{$gene}{"START"}."\t".
-#	    $annotation{$contig}{$gene}{"STOP"}."\t".
-#	    $annotation{$contig}{$gene}{"LEN"}."\t".
-#	    $annotation{$contig}{$gene}{"STRAND"}."\t";
-#	
-#	$printLine.=$GeneProd{$gene}{"PRODUCT"}."\t".
-#	    $GeneProd{$gene}{"SOURCE"}."\t";
-#	
-#	$printLine.=$PhyloDist{$gene}{"DOMAIN"}."\t".
-#	    $PhyloDist{$gene}{"PHYLUM"}."\t".
-#	    $PhyloDist{$gene}{"CLASS"}."\t".
-#	    $PhyloDist{$gene}{"ORDER"}."\t".
-#	    $PhyloDist{$gene}{"FAMILY"}."\t".
-#	    $PhyloDist{$gene}{"GENUS"}."\t".
-#	    $PhyloDist{$gene}{"SPECIES"}."\t".
-#	    $PhyloDist{$gene}{"PERCENT"};
-##	print $OUT ($crispr{$contig} ? $crispr{$contig} : "\t\t" );
-##	$printLine=~ s/\s+$//g;
 #	print $OUT $printLine."\n";
     }
-    
+
+
     # Update Progress bar
     $currentContig++;
     $progress->update($currentContig);
-#    $|--;
+
 }
 close $LOG;
 # close $OUT;
@@ -403,15 +418,6 @@ my $END=FileHandle->new();
 open($END, ">","END") || die $!;
 close $END;
 
-## Loading the Data sequentially
-#my $contig_names=REST::Neo4p::Index->new('node','contig_names');
-#my $gene_names=REST::Neo4p::Index->new('node','gene_names');
-
-
-# Load the data in a batch
-# Ref: http://www.slideshare.net/majensen1/dcpm-meetup (Slide 12)
-#batch{   
-#}
 
 ##############################
 ######   Sub-Routines   ######
